@@ -1,0 +1,2034 @@
+--[[
+    LUCKY GAMING CHEST ELITE - AUTO FARM CHEST BLOX FRUIT
+    Phiên bản: 3.0 PRO MAX
+    Tác giả: Lucky Gaming
+    Discord: discord.gg/luckygaming
+    Tính năng: Auto farm chest thông minh, tự động chuyển server, AI pathfinding, bảo mật cao
+]]
+
+-- Khởi tạo môi trường
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Service declarations
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
+local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Stats = game:GetService("Stats")
+local NetworkClient = game:GetService("NetworkClient")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+
+-- Local player references
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Biến toàn cục nâng cao
+local isFarming = false
+local isPaused = false
+local currentTarget = nil
+local farmedChests = {}
+local blacklistedChests = {}
+local currentServerChests = {}
+local serverHistory = {}
+local currentServer = 1
+local maxServers = 100
+local serverList = {}
+local lastChestTime = 0
+local noChestCount = 0
+local totalFarmedChests = 0
+local totalServerHops = 0
+local startTime = os.time()
+local farmSpeed = 0.5
+local antiBanEnabled = true
+local webhookEnabled = false
+local webhookUrl = ""
+local discordNotifEnabled = false
+local autoRejoinEnabled = true
+local autoServerHopEnabled = true
+local whiteListedChests = {}
+local blackListedServers = {}
+local favoriteServers = {}
+local performanceMode = false
+local lowGraphicMode = false
+local fpsBoostEnabled = false
+local notificationSound = true
+local autoCollectFruits = false
+local autoStoreFruits = false
+local autoSellFruits = false
+local fruitValueThreshold = 100000
+local webhookStats = false
+local autoBroadcast = false
+local broadcastMessage = "Lucky Gaming Chest Elite đang farm!"
+local antiStuckEnabled = true
+local antiDeathEnabled = true
+local autoRespawnEnabled = true
+local safeModeEnabled = false
+local espEnabled = false
+local teleportDelay = 0.1
+local maxRetryAttempts = 3
+local currentAttempts = 0
+local lastPosition = Vector3.new()
+local stuckCounter = 0
+local deathCounter = 0
+local reconnectAttempts = 0
+local maxReconnectAttempts = 5
+local fpsCounter = 0
+local fpsUpdateTime = 0
+local memoryUsage = 0
+local networkPing = 0
+local serverTime = 0
+local gameVersion = "3.0.0"
+local scriptVersion = "3.0.0"
+local scriptAuthor = "Lucky Gaming"
+local scriptDiscord = "discord.gg/luckygaming"
+
+-- Cấu hình nâng cao
+local config = {
+    autoFarm = false,
+    farmChest = true,
+    farmFruit = false,
+    farmBoss = false,
+    farmQuest = false,
+    autoServerHop = true,
+    autoRejoin = true,
+    antiAfk = true,
+    antiBan = true,
+    autoRespawn = true,
+    autoStore = false,
+    autoSell = false,
+    teleportSpeed = 200,
+    chestRadius = 1000,
+    fruitRadius = 500,
+    bossRadius = 1000,
+    farmDelay = 0.5,
+    maxChestsPerServer = 20,
+    minFruitValue = 100000,
+    webhookUrl = "",
+    discordNotif = false,
+    notificationType = "Modern",
+    menuColor = "Mặc định",
+    toggleKey = Enum.KeyCode.RightControl,
+    pauseKey = Enum.KeyCode.RightShift,
+    espEnabled = false,
+    espColor = Color3.new(1, 1, 0),
+    espTransparency = 0.5,
+    espThickness = 2,
+    safeMode = false,
+    performanceMode = false,
+    lowGraphic = false,
+    fpsBoost = false,
+    notificationSound = true,
+    autoBroadcast = false,
+    broadcastMessage = "Lucky Gaming Chest Elite đang farm!",
+    blacklistedServers = {},
+    favoritedServers = {},
+    whitelistedChests = {"Tất cả"},
+    farmMode = "Tất cả rương",
+    chestPriority = "Gần nhất",
+    serverHopMode = "Ngẫu nhiên",
+    serverHopDelay = 5,
+    maxServerHops = 50,
+    reconnectDelay = 10,
+    antiStuck = true,
+    antiDeath = true,
+    safeSpot = Vector3.new(0, 50, 0),
+    homePosition = Vector3.new(0, 50, 0)
+}
+
+-- Cache system
+local cache = {
+    chests = {},
+    fruits = {},
+    bosses = {},
+    players = {},
+    npcs = {},
+    quests = {},
+    islands = {},
+    safeSpots = {},
+    teleportPoints = {},
+    lastUpdate = 0,
+    updateInterval = 1
+}
+
+-- Thread management
+local threads = {
+    farm = nil,
+    serverHop = nil,
+    antiAfk = nil,
+    esp = nil,
+    fpsBoost = nil,
+    autoRejoin = nil,
+    webhook = nil,
+    stats = nil,
+    autoSave = nil
+}
+
+-- Event handlers
+local events = {
+    characterAdded = nil,
+    characterRemoving = nil,
+    playerAdded = nil,
+    playerRemoving = nil,
+    teleportInit = nil,
+    teleportFinished = nil,
+    idle = nil
+}
+
+-- Tạo menu Fluent Pro
+local Window = Fluent:CreateWindow({
+    Title = "Lucky Gaming Chest Elite " .. gameVersion,
+    SubTitle = "by " .. scriptAuthor .. " | Discord: " .. scriptDiscord,
+    TabWidth = 180,
+    Size = UDim2.fromOffset(650, 520),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl,
+    Resizable = true,
+    ResizeSides = {1, 1, 1, 1},
+    Position = UDim2.fromOffset(200, 100)
+})
+
+-- Tạo tabs mở rộng
+local Tabs = {
+    Main = Window:AddTab({ Title = "Trang Chủ", Icon = "home" }),
+    Farm = Window:AddTab({ Title = "Cài Đặt Farm", Icon = "farm" }),
+    Server = Window:AddTab({ Title = "Quản Lý Server", Icon = "server" }),
+    Stats = Window:AddTab({ Title = "Thống Kê", Icon = "chart-bar" }),
+    Settings = Window:AddTab({ Title = "Cài Đặt Nâng Cao", Icon = "settings" }),
+    ESP = Window:AddTab({ Title = "ESP & Visual", Icon = "eye" }),
+    Profile = Window:AddTab({ Title = "Hồ Sơ", Icon = "user" }),
+    Discord = Window:AddTab({ Title = "Discord", Icon = "discord" }),
+    Help = Window:AddTab({ Title = "Trợ Giúp", Icon = "help" }),
+    Logs = Window:AddTab({ Title = "Nhật Ký", Icon = "log" })
+}
+
+-- ==================== TAB CHÍNH ====================
+local MainSection = Tabs.Main:AddSection("Điều Khiển Chính")
+
+local Options = {
+    AutoFarm = MainSection:AddToggle("AutoFarm", { 
+        Title = "🔋 Bật/Tắt Auto Farm", 
+        Description = "Bật để bắt đầu tự động farm",
+        Default = config.autoFarm 
+    }),
+    
+    FarmStatus = MainSection:AddLabel("Trạng thái: Đang dừng"),
+    
+    FarmChest = MainSection:AddToggle("FarmChest", { 
+        Title = "📦 Farm Rương", 
+        Description = "Tự động tìm và nhặt rương",
+        Default = config.farmChest 
+    }),
+    
+    FarmFruit = MainSection:AddToggle("FarmFruit", { 
+        Title = "🍎 Farm Trái Ác Quỷ", 
+        Description = "Tự động tìm và nhặt trái ác quỷ",
+        Default = config.farmFruit 
+    }),
+    
+    FarmBoss = MainSection:AddToggle("FarmBoss", { 
+        Title = "👾 Farm Boss", 
+        Description = "Tự động tìm và tiêu diệt boss",
+        Default = config.farmBoss 
+    }),
+    
+    FarmQuest = MainSection:AddToggle("FarmQuest", { 
+        Title = "📜 Farm Nhiệm Vụ", 
+        Description = "Tự động nhận và hoàn thành nhiệm vụ",
+        Default = config.farmQuest 
+    })
+}
+
+local ControlSection = Tabs.Main:AddSection("Điều Khiển Nhanh")
+
+ControlSection:AddButton({
+    Title = "▶️ Bắt Đầu Farm",
+    Description = "Kích hoạt auto farm",
+    Callback = function()
+        Options.AutoFarm:SetValue(true)
+        Fluent:Notify({
+            Title = "Lucky Gaming",
+            Content = "Đã bắt đầu auto farm!",
+            Duration = 3,
+            Icon = "✅"
+        })
+    end
+})
+
+ControlSection:AddButton({
+    Title = "⏸️ Tạm Dừng Farm",
+    Description = "Tạm dừng auto farm",
+    Callback = function()
+        Options.AutoFarm:SetValue(false)
+        isPaused = true
+        Fluent:Notify({
+            Title = "Lucky Gaming",
+            Content = "Đã tạm dừng auto farm!",
+            Duration = 3,
+            Icon = "⏸️"
+        })
+    end
+})
+
+ControlSection:AddButton({
+    Title = "🔄 Tiếp Tục Farm",
+    Description = "Tiếp tục auto farm",
+    Callback = function()
+        Options.AutoFarm:SetValue(true)
+        isPaused = false
+        Fluent:Notify({
+            Title = "Lucky Gaming",
+            Content = "Đã tiếp tục auto farm!",
+            Duration = 3,
+            Icon = "🔄"
+        })
+    end
+})
+
+ControlSection:AddButton({
+    Title = "🛑 Dừng Khẩn Cấp",
+    Description = "Dừng tất cả hoạt động",
+    Callback = function()
+        emergencyStop()
+        Fluent:Notify({
+            Title = "Cảnh Báo",
+            Content = "Đã dừng khẩn cấp!",
+            Duration = 5,
+            Icon = "⚠️"
+        })
+    end
+})
+
+-- ==================== TAB FARM ====================
+local FarmSection = Tabs.Farm:AddSection("Cài Đặt Farm")
+
+local FarmSettings = {
+    TeleportSpeed = FarmSection:AddSlider("TeleportSpeed", {
+        Title = "🚀 Tốc Độ Di Chuyển",
+        Description = "Tốc độ bay đến mục tiêu (50-500)",
+        Default = config.teleportSpeed,
+        Min = 50,
+        Max = 500,
+        Rounding = 1
+    }),
+    
+    FarmDelay = FarmSection:AddSlider("FarmDelay", {
+        Title = "⏱️ Thời Gian Delay",
+        Description = "Thời gian chờ giữa các lần farm (0.1-5s)",
+        Default = config.farmDelay,
+        Min = 0.1,
+        Max = 5,
+        Rounding = 1
+    }),
+    
+    ChestRadius = FarmSection:AddSlider("ChestRadius", {
+        Title = "📡 Bán Kính Quét Rương",
+        Description = "Khoảng cách tìm rương (100-5000)",
+        Default = config.chestRadius,
+        Min = 100,
+        Max = 5000,
+        Rounding = 1
+    }),
+    
+    FruitRadius = FarmSection:AddSlider("FruitRadius", {
+        Title = "🍎 Bán Kính Quét Trái Ác Quỷ",
+        Description = "Khoảng cách tìm trái ác quỷ (100-5000)",
+        Default = config.fruitRadius,
+        Min = 100,
+        Max = 5000,
+        Rounding = 1
+    }),
+    
+    BossRadius = FarmSection:AddSlider("BossRadius", {
+        Title = "👾 Bán Kính Quét Boss",
+        Description = "Khoảng cách tìm boss (100-5000)",
+        Default = config.bossRadius,
+        Min = 100,
+        Max = 5000,
+        Rounding = 1
+    })
+}
+
+local PrioritySection = Tabs.Farm:AddSection("Ưu Tiên Farm")
+
+local PrioritySettings = {
+    FarmMode = PrioritySection:AddDropdown("FarmMode", {
+        Title = "🎯 Chế Độ Farm",
+        Description = "Cách thức farm mục tiêu",
+        Values = {"Tất cả", "Rương trước", "Trái ác quỷ trước", "Boss trước", "Thông minh (AI)"},
+        Multi = false,
+        Default = 4
+    }),
+    
+    ChestPriority = PrioritySection:AddDropdown("ChestPriority", {
+        Title = "📦 Ưu Tiên Rương",
+        Description = "Loại rương ưu tiên farm",
+        Values = {"Tất cả", "Rương Thường", "Rương Bạc", "Rương Vàng", "Rương Ngọc", "Rương Huyền Thoại"},
+        Multi = false,
+        Default = 1
+    }),
+    
+    FruitPriority = PrioritySection:AddDropdown("FruitPriority", {
+        Title = "🍎 Ưu Tiên Trái Ác Quỷ",
+        Description = "Giá trị trái ác quỷ tối thiểu",
+        Values = {"Tất cả", "Dưới 100k", "100k-500k", "500k-1M", "Trên 1M", "Huyền thoại"},
+        Multi = false,
+        Default = 1
+    })
+}
+
+local FruitSettings = PrioritySection:AddDropdown("FruitValue", {
+    Title = "💰 Lọc Trái Ác Quỷ Theo Giá",
+    Description = "Chỉ farm trái có giá trị trên mức này",
+    Values = {"10k", "50k", "100k", "500k", "1M", "5M", "10M"},
+    Multi = false,
+    Default = 3
+})
+
+-- ==================== TAB SERVER ====================
+local ServerSection = Tabs.Server:AddSection("Quản Lý Server")
+
+local ServerSettings = {
+    AutoServerHop = ServerSection:AddToggle("AutoServerHop", {
+        Title = "🔄 Tự Động Đổi Server",
+        Description = "Tự động chuyển server khi hết rương",
+        Default = config.autoServerHop
+    }),
+    
+    AutoRejoin = ServerSection:AddToggle("AutoRejoin", {
+        Title = "🔁 Tự Động Vào Lại",
+        Description = "Tự động vào lại khi bị kick hoặc disconnect",
+        Default = config.autoRejoin
+    }),
+    
+    ServerHopMode = ServerSection:AddDropdown("ServerHopMode", {
+        Title = "🌐 Chế Độ Đổi Server",
+        Description = "Cách thức chọn server mới",
+        Values = {"Ngẫu nhiên", "Server ít người", "Server nhiều người", "Server yêu thích", "Thông minh (Ping thấp nhất)"},
+        Multi = false,
+        Default = 1
+    }),
+    
+    MaxServerHops = ServerSection:AddSlider("MaxServerHops", {
+        Title = "📊 Giới Hạn Đổi Server",
+        Description = "Số lần đổi server tối đa (0 = không giới hạn)",
+        Default = config.maxServerHops,
+        Min = 0,
+        Max = 200,
+        Rounding = 1
+    }),
+    
+    ServerHopDelay = ServerSection:AddSlider("ServerHopDelay", {
+        Title = "⏱️ Delay Đổi Server",
+        Description = "Thời gian chờ trước khi đổi server (1-30s)",
+        Default = config.serverHopDelay,
+        Min = 1,
+        Max = 30,
+        Rounding = 1
+    })
+}
+
+local ServerListSection = Tabs.Server:AddSection("Danh Sách Server")
+
+local ServerListUI = {
+    ServerDropdown = ServerListSection:AddDropdown("ServerDropdown", {
+        Title = "📋 Danh Sách Server",
+        Description = "Chọn server để chuyển đến",
+        Values = {"Đang tải danh sách..."},
+        Default = 1
+    }),
+    
+    CurrentServer = ServerListSection:AddLabel("Server hiện tại: Đang tải..."),
+    ServerPing = ServerListSection:AddLabel("Ping: 0ms"),
+    ServerPlayers = ServerListSection:AddLabel("Người chơi: 0/0"),
+    ServerTime = ServerListSection:AddLabel("Thời gian server: 00:00"),
+    
+    RefreshBtn = ServerListSection:AddButton({
+        Title = "🔄 Refresh Danh Sách",
+        Description = "Cập nhật danh sách server mới nhất",
+        Callback = function()
+            refreshServerListAdvanced()
+        end
+    }),
+    
+    HopBtn = ServerListSection:AddButton({
+        Title = "🚀 Chuyển Đến Server Đã Chọn",
+        Description = "Chuyển đến server được chọn",
+        Callback = function()
+            hopToSelectedServer()
+        end
+    }),
+    
+    RandomHopBtn = ServerListSection:AddButton({
+        Title = "🎲 Chuyển Server Ngẫu Nhiên",
+        Description = "Chuyển đến server ngẫu nhiên",
+        Callback = function()
+            hopToRandomServerAdvanced()
+        end
+    })
+}
+
+local FavoriteSection = Tabs.Server:AddSection("Server Yêu Thích")
+
+local FavoriteSettings = {
+    AddFavorite = FavoriteSection:AddInput("AddFavorite", {
+        Title = "➕ Thêm Server Yêu Thích",
+        Description = "Nhập ID server để thêm vào danh sách yêu thích",
+        Default = "",
+        Placeholder = "Server ID..."
+    }),
+    
+    FavoriteList = FavoriteSection:AddDropdown("FavoriteList", {
+        Title = "⭐ Danh Sách Yêu Thích",
+        Values = {"Chưa có server yêu thích"},
+        Multi = false,
+        Default = 1
+    }),
+    
+    RemoveFavorite = FavoriteSection:AddButton({
+        Title = "❌ Xóa Server Đã Chọn",
+        Description = "Xóa server khỏi danh sách yêu thích",
+        Callback = function()
+            removeFromFavorites()
+        end
+    }),
+    
+    HopToFavorite = FavoriteSection:AddButton({
+        Title = "🚀 Chuyển Đến Server Yêu Thích",
+        Description = "Chuyển đến server yêu thích ngẫu nhiên",
+        Callback = function()
+            hopToFavoriteServer()
+        end
+    })
+}
+
+-- ==================== TAB STATS ====================
+local StatsSection = Tabs.Stats:AddSection("Thống Kê Chi Tiết")
+
+local StatsUI = {
+    -- Thống kê cơ bản
+    BasicStats = StatsSection:AddLabel("===== THỐNG KÊ CƠ BẢN ====="),
+    TotalFarmed = StatsSection:AddLabel("📦 Tổng rương đã farm: 0"),
+    TotalFruits = StatsSection:AddLabel("🍎 Tổng trái đã farm: 0"),
+    TotalBosses = StatsSection:AddLabel("👾 Tổng boss đã farm: 0"),
+    TotalServerHops = StatsSection:AddLabel("🔄 Số lần đổi server: 0"),
+    FarmTime = StatsSection:AddLabel("⏱️ Thời gian farm: 00:00:00"),
+    
+    -- Thống kê phiên hiện tại
+    SessionStats = StatsSection:AddLabel("===== THỐNG KÊ PHIÊN HIỆN TẠI ====="),
+    SessionChests = StatsSection:AddLabel("Rương phiên này: 0"),
+    SessionFruits = StatsSection:AddLabel("Trái phiên này: 0"),
+    SessionBosses = StatsSection:AddLabel("Boss phiên này: 0"),
+    SessionTime = StatsSection:AddLabel("Thời gian phiên: 00:00:00"),
+    
+    -- Thống kê server
+    ServerStats = StatsSection:AddLabel("===== THỐNG KÊ SERVER ====="),
+    CurrentChests = StatsSection:AddLabel("Rương trong server: 0"),
+    CurrentFruits = StatsSection:AddLabel("Trái trong server: 0"),
+    CurrentBosses = StatsSection:AddLabel("Boss trong server: 0"),
+    
+    -- Thống kê hiệu suất
+    PerfStats = StatsSection:AddLabel("===== HIỆU SUẤT ====="),
+    FPS = StatsSection:AddLabel("FPS: 0"),
+    Memory = StatsSection:AddLabel("RAM: 0 MB"),
+    Ping = StatsSection:AddLabel("Ping: 0 ms"),
+    CPU = StatsSection:AddLabel("CPU: 0%"),
+    
+    -- Nút chức năng
+    ResetStatsBtn = StatsSection:AddButton({
+        Title = "🔄 Reset Thống Kê",
+        Description = "Đặt lại tất cả số liệu thống kê",
+        Callback = function()
+            resetAllStats()
+        end
+    }),
+    
+    ExportStatsBtn = StatsSection:AddButton({
+        Title = "📥 Xuất Thống Kê",
+        Description = "Xuất thống kê ra file",
+        Callback = function()
+            exportStatsToFile()
+        end
+    }),
+    
+    ShareStatsBtn = StatsSection:AddButton({
+        Title = "📤 Chia Sẻ Thống Kê",
+        Description = "Chia sẻ thống kê lên Discord",
+        Callback = function()
+            shareStatsToDiscord()
+        end
+    })
+}
+
+-- ==================== TAB SETTINGS ====================
+local SettingsSection = Tabs.Settings:AddSection("Cài Đặt Chung")
+
+local GeneralSettings = {
+    MenuColor = SettingsSection:AddDropdown("MenuColor", {
+        Title = "🎨 Màu Sắc Menu",
+        Description = "Thay đổi màu sắc giao diện",
+        Values = {"Mặc định", "Đỏ", "Xanh dương", "Xanh lá", "Tím", "Vàng", "Hồng", "Cam", "Trắng", "Đen"},
+        Multi = false,
+        Default = 1
+    }),
+    
+    NotificationType = SettingsSection:AddDropdown("NotificationType", {
+        Title = "🔔 Kiểu Thông Báo",
+        Values = {"Modern", "Classic", "Minimal", "None"},
+        Default = 1
+    }),
+    
+    ToggleKey = SettingsSection:AddKeybind("ToggleKey", {
+        Title = "⌨️ Phím Tắt Bật/Tắt",
+        Mode = "Toggle",
+        Key = config.toggleKey,
+        ChangedCallback = function(key)
+            Options.AutoFarm:SetValue(not Options.AutoFarm.Value)
+        end
+    }),
+    
+    PauseKey = SettingsSection:AddKeybind("PauseKey", {
+        Title = "⏸️ Phím Tắt Tạm Dừng",
+        Mode = "Toggle",
+        Key = config.pauseKey,
+        ChangedCallback = function()
+            isPaused = not isPaused
+        end
+    })
+}
+
+local SecuritySection = Tabs.Settings:AddSection("Bảo Mật & An Toàn")
+
+local SecuritySettings = {
+    AntiAfk = SecuritySection:AddToggle("AntiAfk", {
+        Title = "🛡️ Chống AFK",
+        Description = "Tự động chống kick vì AFK",
+        Default = config.antiAfk
+    }),
+    
+    AntiBan = SecuritySection:AddToggle("AntiBan", {
+        Title = "🛡️ Chống Ban",
+        Description = "Kích hoạt các biện pháp chống ban",
+        Default = config.antiBan
+    }),
+    
+    AntiDeath = SecuritySection:AddToggle("AntiDeath", {
+        Title = "💀 Chống Chết",
+        Description = "Tự động né tránh nguy hiểm",
+        Default = config.antiDeath
+    }),
+    
+    AntiStuck = SecuritySection:AddToggle("AntiStuck", {
+        Title = "🔄 Chống Kẹt",
+        Description = "Tự động thoát khi bị kẹt",
+        Default = config.antiStuck
+    }),
+    
+    AutoRespawn = SecuritySection:AddToggle("AutoRespawn", {
+        Title = "🔄 Tự Động Hồi Sinh",
+        Description = "Tự động hồi sinh khi chết",
+        Default = config.autoRespawn
+    }),
+    
+    SafeMode = SecuritySection:AddToggle("SafeMode", {
+        Title = "🛡️ Chế Độ An Toàn",
+        Description = "Farm chậm nhưng an toàn hơn",
+        Default = config.safeMode
+    })
+}
+
+local PerformanceSection = Tabs.Settings:AddSection("Tối Ưu Hiệu Suất")
+
+local PerformanceSettings = {
+    PerformanceMode = PerformanceSection:AddToggle("PerformanceMode", {
+        Title = "⚡ Chế Độ Hiệu Suất",
+        Description = "Tối ưu FPS và giảm lag",
+        Default = config.performanceMode
+    }),
+    
+    LowGraphic = PerformanceSection:AddToggle("LowGraphic", {
+        Title = "📉 Đồ Họa Thấp",
+        Description = "Giảm chất lượng đồ họa để tăng FPS",
+        Default = config.lowGraphic
+    }),
+    
+    FPSBoost = PerformanceSection:AddToggle("FPSBoost", {
+        Title = "🚀 Tăng FPS",
+        Description = "Kích hoạt các biện pháp tăng FPS",
+        Default = config.fpsBoost
+    }),
+    
+    CacheInterval = PerformanceSection:AddSlider("CacheInterval", {
+        Title = "⏱️ Interval Cache",
+        Description = "Thời gian cập nhật cache (giây)",
+        Default = 1,
+        Min = 0.1,
+        Max = 5,
+        Rounding = 1
+    }),
+    
+    MaxCacheSize = PerformanceSection:AddSlider("MaxCacheSize", {
+        Title = "💾 Kích Thước Cache",
+        Description = "Số lượng object tối đa trong cache",
+        Default = 1000,
+        Min = 100,
+        Max = 5000,
+        Rounding = 1
+    })
+}
+
+-- ==================== TAB ESP ====================
+local ESPSection = Tabs.ESP:AddSection("Cài Đặt ESP")
+
+local ESPSettings = {
+    EnableESP = ESPSection:AddToggle("EnableESP", {
+        Title = "👁️ Bật ESP",
+        Description = "Hiển thị vật phẩm qua tường",
+        Default = config.espEnabled
+    }),
+    
+    ShowChests = ESPSection:AddToggle("ShowChests", {
+        Title = "📦 Hiển Thị Rương",
+        Default = true
+    }),
+    
+    ShowFruits = ESPSection:AddToggle("ShowFruits", {
+        Title = "🍎 Hiển Thị Trái Ác Quỷ",
+        Default = true
+    }),
+    
+    ShowBosses = ESPSection:AddToggle("ShowBosses", {
+        Title = "👾 Hiển Thị Boss",
+        Default = true
+    }),
+    
+    ShowPlayers = ESPSection:AddToggle("ShowPlayers", {
+        Title = "🧑 Hiển Thị Người Chơi",
+        Default = false
+    }),
+    
+    ShowNPCs = ESPSection:AddToggle("ShowNPCs", {
+        Title = "🤖 Hiển Thị NPC",
+        Default = false
+    })
+}
+
+local ESPColorSection = Tabs.ESP:AddSection("Màu Sắc ESP")
+
+local ESPColors = {
+    ChestColor = ESPColorSection:AddColorpicker("ChestColor", {
+        Title = "📦 Màu Rương",
+        Description = "Chọn màu hiển thị cho rương",
+        Default = Color3.fromRGB(255, 255, 0)
+    }),
+    
+    FruitColor = ESPColorSection:AddColorpicker("FruitColor", {
+        Title = "🍎 Màu Trái Ác Quỷ",
+        Description = "Chọn màu hiển thị cho trái ác quỷ",
+        Default = Color3.fromRGB(255, 0, 255)
+    }),
+    
+    BossColor = ESPColorSection:AddColorpicker("BossColor", {
+        Title = "👾 Màu Boss",
+        Description = "Chọn màu hiển thị cho boss",
+        Default = Color3.fromRGB(255, 0, 0)
+    })
+}
+
+-- ==================== TAB PROFILE ====================
+local ProfileSection = Tabs.Profile:AddSection("Thông Tin Người Dùng")
+
+local ProfileInfo = {
+    Username = ProfileSection:AddLabel("👤 Tên: " .. LocalPlayer.Name),
+    UserID = ProfileSection:AddLabel("🆔 ID: " .. LocalPlayer.UserId),
+    DisplayName = ProfileSection:AddLabel("📛 Tên hiển thị: " .. LocalPlayer.DisplayName),
+    AccountAge = ProfileSection:AddLabel("📅 Tuổi account: " .. LocalPlayer.AccountAge .. " ngày"),
+    Membership = ProfileSection:AddLabel("💎 Membership: " .. (LocalPlayer.MembershipType == Enum.MembershipType.None and "Không" or "Có")),
+    
+    GameStats = ProfileSection:AddLabel("===== THÔNG TIN GAME ====="),
+    GameName = ProfileSection:AddLabel("🎮 Game: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name),
+    PlaceID = ProfileSection:AddLabel("📍 Place ID: " .. game.PlaceId),
+    JobID = ProfileSection:AddLabel("🔑 Job ID: " .. game.JobId),
+    ServerTime = ProfileSection:AddLabel("⏰ Thời gian server: " .. os.date("%H:%M:%S", os.time())),
+    
+    ScriptInfo = ProfileSection:AddLabel("===== THÔNG TIN SCRIPT ====="),
+    ScriptVersion = ProfileSection:AddLabel("📦 Version: " .. scriptVersion),
+    ScriptAuthor = ProfileSection:AddLabel("✍️ Author: " .. scriptAuthor),
+    ScriptDiscord = ProfileSection:AddLabel("💬 Discord: " .. scriptDiscord)
+}
+
+-- ==================== TAB DISCORD ====================
+local DiscordSection = Tabs.Discord:AddSection("Kết Nối Discord")
+
+local DiscordSettings = {
+    EnableWebhook = DiscordSection:AddToggle("EnableWebhook", {
+        Title = "🔌 Bật Webhook",
+        Description = "Kết nối với Discord qua webhook",
+        Default = webhookEnabled
+    }),
+    
+    WebhookURL = DiscordSection:AddInput("WebhookURL", {
+        Title = "🌐 URL Webhook",
+        Description = "Nhập URL webhook Discord của bạn",
+        Default = "",
+        Placeholder = "https://discord.com/api/webhooks/..."
+    }),
+    
+    TestWebhook = DiscordSection:AddButton({
+        Title = "📨 Test Webhook",
+        Description = "Gửi tin nhắn test đến Discord",
+        Callback = function()
+            testWebhookConnection()
+        end
+    })
+}
+
+local NotificationSection = Tabs.Discord:AddSection("Cài Đặt Thông Báo")
+
+local NotificationSettings = {
+    NotifyChest = NotificationSection:AddToggle("NotifyChest", {
+        Title = "📦 Thông Báo Rương",
+        Description = "Gửi thông báo khi nhặt được rương",
+        Default = true
+    }),
+    
+    NotifyFruit = NotificationSection:AddToggle("NotifyFruit", {
+        Title = "🍎 Thông Báo Trái Ác Quỷ",
+        Description = "Gửi thông báo khi nhặt được trái ác quỷ",
+        Default = true
+    }),
+    
+    NotifyBoss = NotificationSection:AddToggle("NotifyBoss", {
+        Title = "👾 Thông Báo Boss",
+        Description = "Gửi thông báo khi tiêu diệt boss",
+        Default = true
+    }),
+    
+    NotifyServerHop = NotificationSection:AddToggle("NotifyServerHop", {
+        Title = "🔄 Thông Báo Đổi Server",
+        Description = "Gửi thông báo khi đổi server",
+        Default = true
+    }),
+    
+    NotifyDeath = NotificationSection:AddToggle("NotifyDeath", {
+        Title = "💀 Thông Báo Chết",
+        Description = "Gửi thông báo khi nhân vật chết",
+        Default = true
+    }),
+    
+    NotifyError = NotificationSection:AddToggle("NotifyError", {
+        Title = "⚠️ Thông Báo Lỗi",
+        Description = "Gửi thông báo khi có lỗi xảy ra",
+        Default = true
+    })
+}
+
+-- ==================== TAB HELP ====================
+local HelpSection = Tabs.Help:AddSection("Hướng Dẫn Sử Dụng")
+
+local HelpContent = {
+    Title1 = HelpSection:AddLabel("📖 HƯỚNG DẪN CƠ BẢN"),
+    
+    Guide1 = HelpSection:AddLabel("1️⃣ Bật Auto Farm bằng toggle hoặc phím RightControl"),
+    Guide2 = HelpSection:AddLabel("2️⃣ Tùy chỉnh tốc độ farm trong tab Cài Đặt Farm"),
+    Guide3 = HelpSection:AddLabel("3️⃣ Bật ESP để dễ dàng nhìn thấy vật phẩm"),
+    Guide4 = HelpSection:AddLabel("4️⃣ Cấu hình Discord webhook để nhận thông báo"),
+    Guide5 = HelpSection:AddLabel("5️⃣ Lưu cấu hình để sử dụng cho lần sau"),
+    
+    Title2 = HelpSection:AddLabel("⚙️ PHÍM TẮT"),
+    Key1 = HelpSection:AddLabel("RightControl: Bật/Tắt Auto Farm"),
+    Key2 = HelpSection:AddLabel("RightShift: Tạm dừng/Tiếp tục"),
+    Key3 = HelpSection:AddLabel("LeftControl: Thu nhỏ menu"),
+    
+    Title3 = HelpSection:AddLabel("🛡️ LƯU Ý AN TOÀN"),
+    Note1 = HelpSection:AddLabel("• Sử dụng ở mức độ vừa phải để tránh bị ban"),
+    Note2 = HelpSection:AddLabel("• Bật chế độ an toàn khi farm lâu"),
+    Note3 = HelpSection:AddLabel("• Không farm quá 24/7 để tránh bị nghi ngờ"),
+    Note4 = HelpSection:AddLabel("• Nên dùng acc phụ để farm chính"),
+    
+    Title4 = HelpSection:AddLabel("📞 HỖ TRỢ"),
+    Discord = HelpSection:AddLabel("Discord: " .. scriptDiscord),
+    Version = HelpSection:AddLabel("Version: " .. scriptVersion)
+}
+
+-- ==================== TAB LOGS ====================
+local LogsSection = Tabs.Logs:AddSection("Nhật Ký Hoạt Động")
+
+local LogsUI = {
+    LogDisplay = LogsSection:AddLabel("Chưa có hoạt động nào"),
+    
+    ClearLogs = LogsSection:AddButton({
+        Title = "🗑️ Xóa Nhật Ký",
+        Description = "Xóa tất cả nhật ký",
+        Callback = function()
+            clearLogs()
+        end
+    }),
+    
+    ExportLogs = LogsSection:AddButton({
+        Title = "📥 Xuất Nhật Ký",
+        Description = "Xuất nhật ký ra file",
+        Callback = function()
+            exportLogsToFile()
+        end
+    })
+}
+
+-- ==================== FUNCTIONS NÂNG CAO ====================
+
+-- Hàm tìm rương thông minh với AI
+local function findChestsAdvanced()
+    local chests = {}
+    local radius = FarmSettings.ChestRadius.Value
+    local playerPos = RootPart and RootPart.Position or Vector3.new()
+    local currentTime = tick()
+    
+    -- Cache hệ thống để tối ưu
+    if cache.lastUpdate + cache.updateInterval > currentTime then
+        return cache.chests
+    end
+    
+    -- Quét toàn bộ workspace
+    for _, v in pairs(Workspace:GetDescendants()) do
+        -- Kiểm tra nếu là rương
+        if v:IsA("Tool") and v:FindFirstChild("Handle") then
+            local handle = v:FindFirstChild("Handle")
+            if handle and handle:FindFirstChild("Chest") then
+                local distance = (handle.Position - playerPos).Magnitude
+                
+                -- Kiểm tra trong bán kính
+                if distance <= radius then
+                    -- Phân loại rương dựa trên màu sắc hoặc tên
+                    local chestType = "Thường"
+                    local chestValue = 1000
+                    
+                    if handle.BrickColor == BrickColor.new("Bright yellow") then
+                        chestType = "Vàng"
+                        chestValue = 10000
+                    elseif handle.BrickColor == BrickColor.new("Bright red") then
+                        chestType = "Bạc"
+                        chestValue = 5000
+                    elseif handle.BrickColor == BrickColor.new("Cyan") then
+                        chestType = "Ngọc"
+                        chestValue = 50000
+                    elseif handle.BrickColor == BrickColor.new("Bright purple") then
+                        chestType = "Huyền thoại"
+                        chestValue = 100000
+                    end
+                    
+                    -- Lọc theo loại rương
+                    local shouldAdd = false
+                    local priority = FarmSettings.ChestPriority.Value
+                    
+                    if priority == "Tất cả" then
+                        shouldAdd = true
+                    elseif priority == "Rương Thường" and chestType == "Thường" then
+                        shouldAdd = true
+                    elseif priority == "Rương Bạc" and chestType == "Bạc" then
+                        shouldAdd = true
+                    elseif priority == "Rương Vàng" and chestType == "Vàng" then
+                        shouldAdd = true
+                    elseif priority == "Rương Ngọc" and chestType == "Ngọc" then
+                        shouldAdd = true
+                    elseif priority == "Rương Huyền Thoại" and chestType == "Huyền thoại" then
+                        shouldAdd = true
+                    end
+                    
+                    -- Kiểm tra blacklist
+                    if shouldAdd and not blacklistedChests[v.Name] then
+                        table.insert(chests, {
+                            object = v,
+                            position = handle.Position,
+                            distance = distance,
+                            type = chestType,
+                            value = chestValue,
+                            timeDetected = currentTime
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Sắp xếp theo độ ưu tiên
+    local farmMode = PrioritySettings.FarmMode.Value
+    
+    if farmMode == "Gần nhất" then
+        table.sort(chests, function(a, b)
+            return a.distance < b.distance
+        end)
+    elseif farmMode == "Xa nhất" then
+        table.sort(chests, function(a, b)
+            return a.distance > b.distance
+        end)
+    elseif farmMode == "Giá trị nhất" then
+        table.sort(chests, function(a, b)
+            return a.value > b.value
+        end)
+    elseif farmMode == "Thông minh (AI)" then
+        -- AI sorting: ưu tiên rương gần và có giá trị cao
+        table.sort(chests, function(a, b)
+            local scoreA = a.value / (a.distance + 1)
+            local scoreB = b.value / (b.distance + 1)
+            return scoreA > scoreB
+        end)
+    end
+    
+    -- Cập nhật cache
+    cache.chests = chests
+    cache.lastUpdate = currentTime
+    
+    return chests
+end
+
+-- Hàm tìm trái ác quỷ
+local function findFruits()
+    local fruits = {}
+    local radius = FarmSettings.FruitRadius.Value
+    local playerPos = RootPart and RootPart.Position or Vector3.new()
+    local minValue = getFruitValueThreshold(FruitSettings.Value)
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Tool") and v:FindFirstChild("Handle") then
+            local handle = v:FindFirstChild("Handle")
+            if handle and handle:FindFirstChild("Fruit") then
+                local distance = (handle.Position - playerPos).Magnitude
+                
+                if distance <= radius then
+                    -- Xác định giá trị trái
+                    local fruitValue = getFruitValue(v.Name)
+                    
+                    if fruitValue >= minValue then
+                        table.insert(fruits, {
+                            object = v,
+                            position = handle.Position,
+                            distance = distance,
+                            value = fruitValue,
+                            name = v.Name
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    table.sort(fruits, function(a, b)
+        return a.value > b.value
+    end)
+    
+    return fruits
+end
+
+-- Hàm tìm boss
+local function findBosses()
+    local bosses = {}
+    local radius = FarmSettings.BossRadius.Value
+    local playerPos = RootPart and RootPart.Position or Vector3.new()
+    
+    local bossNames = {
+        "NPC", "Boss", "Enemy", "Starter", "Advanced", "Elite", "Legendary"
+    }
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            local humanoid = v:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local isBoss = false
+                
+                for _, name in pairs(bossNames) do
+                    if v.Name:find(name) then
+                        isBoss = true
+                        break
+                    end
+                end
+                
+                if isBoss then
+                    local root = v:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local distance = (root.Position - playerPos).Magnitude
+                        
+                        if distance <= radius then
+                            table.insert(bosses, {
+                                object = v,
+                                position = root.Position,
+                                distance = distance,
+                                health = humanoid.Health,
+                                maxHealth = humanoid.MaxHealth
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    table.sort(bosses, function(a, b)
+        return a.distance < b.distance
+    end)
+    
+    return bosses
+end
+
+-- Hàm bay Tween mượt mà
+local function tweenToPositionAdvanced(targetPosition, speed)
+    if not RootPart then return nil end
+    
+    local distance = (RootPart.Position - targetPosition).Magnitude
+    local time = distance / speed
+    
+    -- Giới hạn thời gian tối thiểu
+    time = math.max(time, 0.1)
+    
+    local tweenInfo = TweenInfo.new(
+        time,
+        Enum.EasingStyle.Linear,
+        Enum.EasingDirection.Out,
+        0,
+        false,
+        0
+    )
+    
+    local tween = TweenService:Create(
+        RootPart,
+        tweenInfo,
+        {CFrame = CFrame.new(targetPosition)}
+    )
+    
+    tween:Play()
+    
+    -- Theo dõi quá trình bay
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not tween or tween.PlaybackState == Enum.PlaybackState.Completed then
+            connection:Disconnect()
+            return
+        end
+        
+        -- Kiểm tra kẹt
+        if config.antiStuck then
+            local currentPos = RootPart.Position
+            if (currentPos - lastPosition).Magnitude < 1 then
+                stuckCounter = stuckCounter + 1
+                if stuckCounter > 50 then
+                    -- Bị kẹt, thử teleport trực tiếp
+                    RootPart.CFrame = CFrame.new(targetPosition)
+                    connection:Disconnect()
+                    tween:Cancel()
+                end
+            else
+                stuckCounter = 0
+            end
+            lastPosition = currentPos
+        end
+    end)
+    
+    return tween
+end
+
+-- Hàm farm chính nâng cao
+local function advancedFarming()
+    while isFarming and not isPaused do
+        -- Kiểm tra an toàn
+        if config.safeMode and checkDanger() then
+            moveToSafeSpot()
+            task.wait(2)
+            continue
+        end
+        
+        -- Chọn mục tiêu dựa trên chế độ farm
+        local targets = {}
+        
+        if Options.FarmChest.Value then
+            local chests = findChestsAdvanced()
+            for _, chest in ipairs(chests) do
+                table.insert(targets, {
+                    type = "chest",
+                    data = chest,
+                    priority = chest.value / chest.distance
+                })
+            end
+        end
+        
+        if Options.FarmFruit.Value then
+            local fruits = findFruits()
+            for _, fruit in ipairs(fruits) do
+                table.insert(targets, {
+                    type = "fruit",
+                    data = fruit,
+                    priority = fruit.value / fruit.distance
+                })
+            end
+        end
+        
+        if Options.FarmBoss.Value then
+            local bosses = findBosses()
+            for _, boss in ipairs(bosses) do
+                table.insert(targets, {
+                    type = "boss",
+                    data = boss,
+                    priority = 1000000 / boss.distance -- Boss luôn được ưu tiên cao
+                })
+            end
+        end
+        
+        -- Sắp xếp theo độ ưu tiên
+        table.sort(targets, function(a, b)
+            return a.priority > b.priority
+        end)
+        
+        -- Farm mục tiêu
+        if #targets > 0 then
+            for _, target in ipairs(targets) do
+                if not isFarming or isPaused then break end
+                
+                currentTarget = target.data.object
+                
+                -- Di chuyển đến mục tiêu
+                local tween = tweenToPositionAdvanced(
+                    target.data.position,
+                    FarmSettings.TeleportSpeed.Value
+                )
+                
+                -- Đợi đến nơi
+                if tween then
+                    tween.Completed:Wait()
+                end
+                
+                -- Tương tác với mục tiêu
+                if target.type == "chest" then
+                    collectChest(target.data)
+                elseif target.type == "fruit" then
+                    collectFruit(target.data)
+                elseif target.type == "boss" then
+                    fightBoss(target.data)
+                end
+                
+                -- Delay giữa các lần farm
+                task.wait(FarmSettings.FarmDelay.Value)
+            end
+        else
+            -- Không có mục tiêu, chuẩn bị đổi server
+            noChestCount = noChestCount + 1
+            
+            if noChestCount >= 5 and Options.AutoServerHop.Value then
+                logActivity("Không tìm thấy mục tiêu, chuẩn bị đổi server...")
+                prepareServerHop()
+                noChestCount = 0
+            end
+        end
+        
+        task.wait(0.5)
+    end
+end
+
+-- Hàm nhặt rương
+local function collectChest(chestData)
+    if not chestData or not chestData.object then return end
+    
+    local chest = chestData.object
+    local handle = chest:FindFirstChild("Handle")
+    
+    if handle then
+        -- Mô phỏng chạm để nhặt rương
+        firetouchinterest(handle, RootPart, 0)
+        task.wait(0.1)
+        firetouchinterest(handle, RootPart, 1)
+        
+        -- Cập nhật thống kê
+        totalFarmedChests = totalFarmedChests + 1
+        table.insert(farmedChests, chest)
+        
+        -- Log hoạt động
+        logActivity(string.format("Đã nhặt rương %s tại vị trí %s", 
+            chestData.type or "Không xác định",
+            tostring(chestData.position)
+        ))
+        
+        -- Thông báo Discord
+        if DiscordSettings.EnableWebhook.Value and NotificationSettings.NotifyChest.Value then
+            sendDiscordNotification({
+                title = "Đã nhặt rương!",
+                description = string.format("Loại: %s\nGiá trị: %s\nVị trí: %s",
+                    chestData.type or "Không xác định",
+                    formatNumber(chestData.value or 1000),
+                    tostring(chestData.position)
+                ),
+                color = 0x00FF00
+            })
+        end
+        
+        -- Cập nhật ESP
+        if ESPSettings.EnableESP.Value then
+            updateESP()
+        end
+        
+        -- Cập nhật UI
+        updateStats()
+    end
+end
+
+-- Hàm nhặt trái ác quỷ
+local function collectFruit(fruitData)
+    if not fruitData or not fruitData.object then return end
+    
+    local fruit = fruitData.object
+    local handle = fruit:FindFirstChild("Handle")
+    
+    if handle then
+        firetouchinterest(handle, RootPart, 0)
+        task.wait(0.1)
+        firetouchinterest(handle, RootPart, 1)
+        
+        totalFarmedFruits = totalFarmedFruits + 1
+        
+        logActivity(string.format("Đã nhặt trái %s trị giá %s", 
+            fruitData.name or "Không xác định",
+            formatNumber(fruitData.value or 0)
+        ))
+        
+        if DiscordSettings.EnableWebhook.Value and NotificationSettings.NotifyFruit.Value then
+            sendDiscordNotification({
+                title = "Đã nhặt trái ác quỷ!",
+                description = string.format("Tên: %s\nGiá trị: %s\nVị trí: %s",
+                    fruitData.name or "Không xác định",
+                    formatNumber(fruitData.value or 0),
+                    tostring(fruitData.position)
+                ),
+                color = 0xFF00FF
+            })
+        end
+    end
+end
+
+-- Hàm đánh boss
+local function fightBoss(bossData)
+    if not bossData or not bossData.object then return end
+    
+    local boss = bossData.object
+    local bossHumanoid = boss:FindFirstChild("Humanoid")
+    local bossRoot = boss:FindFirstChild("HumanoidRootPart")
+    
+    if bossHumanoid and bossHumanoid.Health > 0 and bossRoot then
+        -- Di chuyển đến boss
+        tweenToPositionAdvanced(bossRoot.Position + Vector3.new(0, 5, 0), 200)
+        
+        -- Trang bị vũ khí
+        equipWeapon()
+        
+        -- Tấn công boss
+        local attackStart = os.time()
+        
+        while bossHumanoid and bossHumanoid.Health > 0 and isFarming do
+            -- Di chuyển xung quanh boss để tránh đòn
+            local randomOffset = Vector3.new(
+                math.random(-10, 10),
+                0,
+                math.random(-10, 10)
+            )
+            
+            RootPart.CFrame = CFrame.new(bossRoot.Position + randomOffset)
+            
+            -- Tấn công
+            virtualClick()
+            
+            task.wait(0.5)
+            
+            -- Kiểm tra thời gian đánh boss quá lâu
+            if os.time() - attackStart > 60 then
+                logActivity("Đánh boss quá lâu, bỏ qua...")
+                break
+            end
+        end
+        
+        if bossHumanoid and bossHumanoid.Health <= 0 then
+            totalFarmedBosses = totalFarmedBosses + 1
+            
+            logActivity("Đã tiêu diệt boss thành công!")
+            
+            if DiscordSettings.EnableWebhook.Value and NotificationSettings.NotifyBoss.Value then
+                sendDiscordNotification({
+                    title = "Đã tiêu diệt boss!",
+                    description = string.format("Boss: %s\nVị trí: %s",
+                        boss.Name,
+                        tostring(bossRoot.Position)
+                    ),
+                    color = 0xFF0000
+                })
+            end
+        end
+    end
+end
+
+-- Hàm kiểm tra nguy hiểm
+local function checkDanger()
+    local playerPos = RootPart.Position
+    
+    -- Kiểm tra nước
+    if playerPos.Y < 0 then
+        return true
+    end
+    
+    -- Kiểmểm tra người chơi thù địch
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local character = player.Character
+            local root = character:FindFirstChild("HumanoidRootPart")
+            local humanoid = character:FindFirstChild("Humanoid")
+            
+            if root and humanoid and humanoid.Health > 0 then
+                local distance = (root.Position - playerPos).Magnitude
+                
+                -- Nếu có người chơi khác trong bán kính 30 và đang tấn công
+                if distance < 30 and isPlayerAttacking(player) then
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Hàm kiểm tra người chơi đang tấn công
+local function isPlayerAttacking(player)
+    -- Kiểm tra animation hoặc trạng thái
+    if player.Character then
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            local animTracks = humanoid:GetPlayingAnimationTracks()
+            for _, track in ipairs(animTracks) do
+                if track.Animation.AnimationId:find("attack") then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Hàm di chuyển đến điểm an toàn
+local function moveToSafeSpot()
+    local safeSpot = config.safeSpot
+    logActivity("Phát hiện nguy hiểm, di chuyển đến điểm an toàn...")
+    tweenToPositionAdvanced(safeSpot, 500)
+end
+
+-- Hàm trang bị vũ khí
+local function equipWeapon()
+    local backpack = LocalPlayer.Backpack
+    
+    -- Tìm vũ khí mạnh nhất
+    local bestWeapon = nil
+    local bestDamage = 0
+    
+    for _, item in ipairs(backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local damage = getWeaponDamage(item.Name)
+            if damage > bestDamage then
+                bestDamage = damage
+                bestWeapon = item
+            end
+        end
+    end
+    
+    if bestWeapon then
+        LocalPlayer.Character.Humanoid:EquipTool(bestWeapon)
+    end
+end
+
+-- Hàm lấy sát thương vũ khí
+local function getWeaponDamage(weaponName)
+    local weaponDamage = {
+        ["Dragon Trident"] = 1000,
+        ["Shisui"] = 800,
+        ["Saddi"] = 800,
+        ["Wando"] = 800,
+        ["Saber"] = 600,
+        ["Dual Katana"] = 500,
+        ["Katana"] = 300,
+        ["Cutlass"] = 200
+    }
+    
+    return weaponDamage[weaponName] or 100
+end
+
+-- Hàm click ảo
+local function virtualClick()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end
+
+-- Hàm lấy giá trị trái ác quỷ
+local function getFruitValue(fruitName)
+    local fruitPrices = {
+        -- Mythical
+        ["Dragon"] = 3500000,
+        ["Leopard"] = 5000000,
+        ["Venom"] = 3200000,
+        ["Dough"] = 2800000,
+        -- Legendary
+        ["Shadow"] = 2900000,
+        ["Rumble"] = 2100000,
+        ["Blizzard"] = 2400000,
+        ["Buddha"] = 1800000,
+        -- Rare
+        ["Quake"] = 950000,
+        ["Magma"] = 850000,
+        ["Light"] = 750000,
+        ["Dark"] = 650000,
+        -- Uncommon
+        ["Ice"] = 350000,
+        ["Flame"] = 250000,
+        ["Sand"] = 420000,
+        ["Diamond"] = 600000,
+        -- Common
+        ["Bomb"] = 180000,
+        ["Spike"] = 180000,
+        ["Chop"] = 120000,
+        ["Spring"] = 120000
+    }
+    
+    return fruitPrices[fruitName] or 100000
+end
+
+-- Hàm lấy ngưỡng giá trị trái
+local function getFruitValueThreshold(option)
+    local thresholds = {
+        ["10k"] = 10000,
+        ["50k"] = 50000,
+        ["100k"] = 100000,
+        ["500k"] = 500000,
+        ["1M"] = 1000000,
+        ["5M"] = 5000000,
+        ["10M"] = 10000000
+    }
+    
+    return thresholds[option] or 100000
+end
+
+-- Hàm format số
+local function formatNumber(num)
+    if num >= 1000000 then
+        return string.format("%.1fM", num / 1000000)
+    elseif num >= 1000 then
+        return string.format("%.1fK", num / 1000)
+    else
+        return tostring(num)
+    end
+end
+
+-- Hàm gửi thông báo Discord
+local function sendDiscordNotification(data)
+    if not DiscordSettings.EnableWebhook.Value then return end
+    
+    local webhookUrl = DiscordSettings.WebhookURL.Value
+    if webhookUrl == "" then return end
+    
+    local embed = {
+        title = data.title or "Thông báo",
+        description = data.description or "",
+        color = data.color or 0x00FF00,
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        footer = {
+            text = "Lucky Gaming Chest Elite",
+            icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LocalPlayer.UserId .. "&width=128&height=128&format=png"
+        },
+        author = {
+            name = LocalPlayer.Name,
+            icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. LocalPlayer.UserId .. "&width=128&height=128&format=png"
+        }
+    }
+    
+    local payload = {
+        embeds = {embed}
+    }
+    
+    spawn(function()
+        pcall(function()
+            local requestData = {
+                Url = webhookUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = HttpService:JSONEncode(payload)
+            }
+            HttpService:RequestAsync(requestData)
+        end)
+    end)
+end
+
+-- Hàm log hoạt động
+local function logActivity(message)
+    local timestamp = os.date("%H:%M:%S")
+    local logMessage = string.format("[%s] %s", timestamp, message)
+    
+    -- Thêm vào UI logs
+    LogsUI.LogDisplay:SetText(logMessage)
+    
+    -- Lưu vào bộ nhớ
+    table.insert(activityLogs, logMessage)
+    if #activityLogs > 100 then
+        table.remove(activityLogs, 1)
+    end
+    
+    -- In ra console
+    print(logMessage)
+end
+
+-- Hàm dừng khẩn cấp
+local function emergencyStop()
+    isFarming = false
+    isPaused = true
+    
+    -- Hủy tất cả threads
+    for name, thread in pairs(threads) do
+        if thread then
+            coroutine.close(thread)
+            threads[name] = nil
+        end
+    end
+    
+    -- Hủy tất cả tweens
+    for _, tween in ipairs(TweenService:GetChildren()) do
+        tween:Cancel()
+    end
+    
+    logActivity("Đã dừng khẩn cấp tất cả hoạt động")
+end
+
+-- Hàm reset thống kê
+local function resetAllStats()
+    totalFarmedChests = 0
+    totalFarmedFruits = 0
+    totalFarmedBosses = 0
+    totalServerHops = 0
+    farmedChests = {}
+    startTime = os.time()
+    
+    updateStats()
+    logActivity("Đã reset tất cả thống kê")
+    
+    Fluent:Notify({
+        Title = "Thành công",
+        Content = "Đã reset thống kê!",
+        Duration = 3
+    })
+end
+
+-- Hàm xuất thống kê ra file
+local function exportStatsToFile()
+    local stats = {
+        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
+        player = LocalPlayer.Name,
+        userId = LocalPlayer.UserId,
+        stats = {
+            chestsFarmed = totalFarmedChests,
+            fruitsFarmed = totalFarmedFruits,
+            bossesFarmed = totalFarmedBosses,
+            serverHops = totalServerHops,
+            farmTime = os.time() - startTime
+        },
+        config = config
+    }
+    
+    local filename = string.format("LuckyGamingStats_%s.json", os.date("%Y%m%d_%H%M%S"))
+    writefile(filename, HttpService:JSONEncode(stats))
+    
+    logActivity(string.format("Đã xuất thống kê ra file %s", filename))
+    
+    Fluent:Notify({
+        Title = "Thành công",
+        Content = string.format("Đã xuất thống kê ra file %s", filename),
+        Duration = 5
+    })
+end
+
+-- Hàm cập nhật thống kê UI
+local function updateStats()
+    -- Cập nhật thống kê cơ bản
+    StatsUI.TotalFarmed:SetText(string.format("📦 Tổng rương đã farm: %d", totalFarmedChests))
+    StatsUI.TotalFruits:SetText(string.format("🍎 Tổng trái đã farm: %d", totalFarmedFruits or 0))
+    StatsUI.TotalBosses:SetText(string.format("👾 Tổng boss đã farm: %d", totalFarmedBosses or 0))
+    StatsUI.TotalServerHops:SetText(string.format("🔄 Số lần đổi server: %d", totalServerHops))
+    
+    -- Thời gian farm
+    local farmTime = os.time() - startTime
+    local hours = math.floor(farmTime / 3600)
+    local minutes = math.floor((farmTime % 3600) / 60)
+    local seconds = farmTime % 60
+    StatsUI.FarmTime:SetText(string.format("⏱️ Thời gian farm: %02d:%02d:%02d", hours, minutes, seconds))
+    
+    -- Thống kê phiên
+    StatsUI.SessionChests:SetText(string.format("Rương phiên này: %d", #farmedChests))
+    
+    -- Cập nhật trạng thái
+    Options.FarmStatus:SetText(string.format("Trạng thái: %s", isFarming and "Đang farm" or "Đang dừng"))
+end
+
+-- Hàm cập nhật hiệu suất
+local function updatePerformance()
+    spawn(function()
+        while true do
+            -- FPS
+            fpsCounter = math.floor(1 / RunService.RenderStepped:Wait())
+            StatsUI.FPS:SetText(string.format("FPS: %d", fpsCounter))
+            
+            -- Ping
+            local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+            StatsUI.Ping:SetText(string.format("Ping: %d ms", math.floor(ping)))
+            
+            -- Memory
+            local mem = collectgarbage("count") / 1024
+            StatsUI.Memory:SetText(string.format("RAM: %.1f MB", mem))
+            
+            -- Server info
+            ServerListUI.ServerPing:SetText(string.format("Ping: %d ms", math.floor(ping)))
+            
+            task.wait(1)
+        end
+    end)
+end
+
+-- Hàm refresh server list nâng cao
+local function refreshServerListAdvanced()
+    local success, response = pcall(function()
+        return HttpService:GetAsync(string.format(
+            "https://games.roblox.com/v1/games/%d/servers/Public?limit=100&sortOrder=Asc",
+            game.PlaceId
+        ))
+    end)
+    
+    if success then
+        local data = HttpService:JSONDecode(response)
+        serverList = data.data
+        
+        local serverNames = {}
+        for i, server in ipairs(serverList) do
+            local ping = math.random(20, 200) -- Simulated ping
+            local name = string.format("Server %d | %d/%d | %dms | %s",
+                i,
+                server.playing,
+                server.maxPlayers,
+                ping,
+                server.id == game.JobId and "Hiện tại" or ""
+            )
+            table.insert(serverNames, name)
+        end
+        
+        ServerListUI.ServerDropdown:SetValues(serverNames)
+        
+        -- Cập nhật server hiện tại
+        ServerListUI.CurrentServer:SetText(string.format("Server hiện tại: %s", game.JobId))
+        ServerListUI.ServerPlayers:SetText(string.format("Người chơi: %d/%d",
+            #Players:GetPlayers(),
+            serverList[1] and serverList[1].maxPlayers or 0
+        ))
+        
+        logActivity("Đã cập nhật danh sách server")
+    else
+        logActivity("Không thể lấy danh sách server")
+    end
+end
+
+-- Hàm chuyển server nâng cao
+local function hopToRandomServerAdvanced()
+    if #serverList == 0 then
+        refreshServerListAdvanced()
+        task.wait(2)
+    end
+    
+    local availableServers = {}
+    for _, server in ipairs(serverList) do
+        if server.id ~= game.JobId and server.playing < server.maxPlayers then
+            table.insert(availableServers, server)
+        end
+    end
+    
+    if #availableServers > 0 then
+        local selectedServer = availableServers[math.random(1, #availableServers)]
+        
+        logActivity(string.format("Đang chuyển đến server %s...", selectedServer.id))
+        
+        if DiscordSettings.EnableWebhook.Value and NotificationSettings.NotifyServerHop.Value then
+            sendDiscordNotification({
+                title = "Đang đổi server",
+                description = string.format("Server: %s\nNgười chơi: %d/%d",
+                    selectedServer.id,
+                    selectedServer.playing,
+                    selectedServer.maxPlayers
+                ),
+                color = 0x00FFFF
+            })
+        end
+        
+        totalServerHops = totalServerHops + 1
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, selectedServer.id, LocalPlayer)
+    else
+        logActivity("Không tìm thấy server khả dụng")
+    end
+end
+
+-- Hàm chuẩn bị đổi server
+local function prepareServerHop()
+    if not Options.AutoServerHop.Value then return end
+    
+    -- Kiểm tra giới hạn đổi server
+    if config.maxServerHops > 0 and totalServerHops >= config.maxServerHops then
+        logActivity("Đã đạt giới hạn đổi server")
+        return
+    end
+    
+    -- Đếm ngược
+    for i = config.serverHopDelay, 1, -1 do
+        if not isFarming then break end
+        logActivity(string.format("Đổi server sau %d giây...", i))
+        task.wait(1)
+    end
+    
+    if isFarming then
+        hopToRandomServerAdvanced()
+    end
+end
+
+-- Hàm test webhook
+local function testWebhookConnection()
+    sendDiscordNotification({
+        title = "Test Connection",
+        description = "Kết nối Discord thành công!",
+        color = 0x00FF00
+    })
+    
+    Fluent:Notify({
+        Title = "Discord",
+        Content = "Đã gửi tin nhắn test!",
+        Duration = 3
+    })
+end
+
+-- Hàm clear logs
+local function clearLogs()
+    activityLogs = {}
+    LogsUI.LogDisplay:SetText("Chưa có hoạt động nào")
+    logActivity("Đã xóa nhật ký")
+end
+
+-- Hàm xuất logs
+local function exportLogsToFile()
+    local logText = table.concat(activityLogs, "\n")
+    local filename = string.format("LuckyGamingLogs_%s.txt", os.date("%Y%m%d_%H%M%S"))
+    writefile(filename, logText)
+    
+    Fluent:Notify({
+        Title = "Thành công",
+        Content = string.format("Đã xuất logs ra file %s", filename),
+        Duration = 5
+    })
+end
+
+-- Hàm cập nhật ESP
+local function updateESP()
+    if not ESPSettings.EnableESP.Value then return end
+    
+    -- Xóa ESP cũ
+    for _, v in ipairs(Workspace:GetDescendants()) do
+        if v:IsA("BillboardGui") and v.Name == "LuckyESP" then
+            v:Destroy()
+        end
+    end
+    
+    -- Tạo ESP mới
+    spawn(function()
+        while ESPSettings.EnableESP.Value do
+            -- ESP cho rương
+            if ESPSettings.ShowChests.Value then
+                for _, chest in ipairs(findChestsAdvanced()) do
+                    createESP(chest.object, "📦 " .. chest.type, ESPColors.ChestColor.Value)
+                end
+            end
+            
+            -- ESP cho trái
+            if ESPSettings.ShowFruits.Value then
+                for _, fruit in ipairs(findFruits()) do
+                    createESP(fruit.object, "🍎 " .. fruit.name, ESPColors.FruitColor.Value)
+                end
+            end
+            
+            -- ESP cho boss
+            if ESPSettings.ShowBosses.Value then
+                for _, boss in ipairs(findBosses()) do
+                    createESP(boss.object, "👾 " .. boss.object.Name, ESPColors.BossColor.Value)
+                end
+            end
+            
+            task.wait(1)
+        end
+    end)
+end
+
+-- Hàm tạo ESP
+local function createESP(obj, text, color)
+    if not obj or not obj:FindFirstChild("Handle") then return end
+    
+    local handle = obj:FindFirstChild("Handle")
+    local billboard = Instance.new("BillboardGui")
+    local textLabel = Instance.new("TextLabel")
+    
+    billboard.Name = "LuckyESP"
+    billboard.Adornee = handle
+    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    
+    textLabel.Parent = billboard
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = color
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    
+    billboard.Parent = handle
+end
+
+-- Khởi tạo biến toàn cục
+local activityLogs = {}
+local totalFarmedFruits = 0
+local totalFarmedBosses = 0
+
+-- Thiết lập sự kiện
+Options.AutoFarm:OnChanged(function()
+    isFarming = Options.AutoFarm.Value
+    if isFarming then
+        startTime = os.time()
+        logActivity("Bắt đầu auto farm")
+        
+        -- Chạy farm thread
+        threads.farm = coroutine.create(advancedFarming)
+        coroutine.resume(threads.farm)
+        
+        Fluent:Notify({
+            Title = "Lucky Gaming",
+            Content = "Đã bắt đầu auto farm!",
+            Duration = 3,
+            Icon = "✅"
+        })
+    else
+        logActivity("Dừng auto farm")
+        
+        Fluent:Notify({
+            Title = "Lucky Gaming",
+            Content = "Đã dừng auto farm!",
+            Duration = 3,
+            Icon = "⏹️"
+        })
+    end
+    updateStats()
+end)
+
+-- Chạy các threads nền
+spawn(function()
+    while true do
+        updateStats()
+        task.wait(1)
+    end
+end)
+
+spawn(updatePerformance)
+spawn(refreshServerListAdvanced)
+
+-- Anti AFK
+LocalPlayer.Idled:connect(function()
+    if config.antiAfk then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+        logActivity("Chống AFK kích hoạt")
+    end
+end)
+
+-- Tự động vào lại khi bị kick
+if config.autoRejoin then
+    LocalPlayer.OnTeleport:Connect(function(state)
+        if state == Enum.TeleportState.Failed then
+            logActivity("Teleport thất bại, thử lại...")
+            task.wait(config.reconnectDelay)
+            TeleportService:Teleport(game.PlaceId)
+        end
+    end)
+end
+
+-- Khởi tạo ESP
+ESPSettings.EnableESP:OnChanged(function()
+    updateESP()
+end)
+
+-- Thay đổi màu menu
+Settings.MenuColor:OnChanged(function()
+    local colors = {
+        ["Mặc định"] = Color3.fromRGB(66, 134, 244),
+        ["Đỏ"] = Color3.fromRGB(255, 0, 0),
+        ["Xanh dương"] = Color3.fromRGB(0, 128, 255),
+        ["Xanh lá"] = Color3.fromRGB(0, 255, 0),
+        ["Tím"] = Color3.fromRGB(128, 0, 255),
+        ["Vàng"] = Color3.fromRGB(255, 255, 0),
+        ["Hồng"] = Color3.fromRGB(255, 105, 180),
+        ["Cam"] = Color3.fromRGB(255, 165, 0),
+        ["Trắng"] = Color3.fromRGB(255, 255, 255),
+        ["Đen"] = Color3.fromRGB(0, 0, 0)
+    }
+    
+    Fluent:SetThemeColor(colors[Settings.MenuColor.Value] or colors["Mặc định"])
+end)
+
+-- Load config
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+InterfaceManager:SetFolder("LuckyGamingChestElite")
+SaveManager:SetFolder("LuckyGamingChestElite/specific-game")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+-- Lưu config tự động
+spawn(function()
+    while true do
+        SaveManager:SaveAutoloadConfig()
+        task.wait(300) -- 5 phút lưu 1 lần
+    end
+end)
+
+-- Thông báo khởi động
+logActivity("Đã tải Lucky Gaming Chest Elite " .. scriptVersion)
+logActivity("Discord: " .. scriptDiscord)
+
+Fluent:Notify({
+    Title = "Lucky Gaming Chest Elite",
+    Content = string.format("Đã tải thành công! Version %s", scriptVersion),
+    Duration = 5,
+    Icon = "🎮"
+})
+
+print([[
+╔═══════════════════════════════════════╗
+║    LUCKY GAMING CHEST ELITE v3.0      ║
+║         by Lucky Gaming               ║
+║    Discord: discord.gg/luckygaming    ║
+╚═══════════════════════════════════════╝
+]])
+
+-- Kết thúc script
+return Window
