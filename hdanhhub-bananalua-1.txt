@@ -29,6 +29,7 @@ local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local executor = (getexecutorname and getexecutorname()) or (identifyexecutor and identifyexecutor())
 if executor then
     if
+        string.find(executor, "Punk") or
         string.find(executor, "Bunni") or
         string.find(executor, "FluxusZ") or
         string.find(executor, "Delta") or
